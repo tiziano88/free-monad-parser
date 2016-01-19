@@ -64,14 +64,14 @@ test = do
   print c
 
 -- | Manual continuation.
-pp1 :: Int -> Op a -> String
-pp1 i (Pure r) = "return\n"
-pp1 i (Free (Def n k)) = unwords [show v, "=", show n, "\n", pp1 (succ i) (k v)]
+pp1 :: Op a -> Int -> String
+pp1 (Pure r) i = "return\n"
+pp1 (Free (Def n k)) i = unwords [show v, "=", show n, "\n", pp1 (k v) (succ i)]
   where v = Var i
-pp1 i (Free (Add v1 v2 k)) = unwords [show v, "=", show v1, "+", show v2, "\n", pp1 (succ i) (k v)]
+pp1 (Free (Add v1 v2 k)) i = unwords [show v, "=", show v1, "+", show v2, "\n", pp1 (k v) (succ i )]
   where v = Var i
-pp1 i (Free (Print v k))  = unwords ["print", show v, "\n", pp1 i k]
-pp1 i (Free (End)) = "end"
+pp1 (Free (Print v k)) i = unwords ["print", show v, "\n", pp1 k i]
+pp1 (Free (End)) i = "end"
 
 -- | Applicative style.
 newVar :: State Int Var
@@ -100,10 +100,29 @@ pp2 (Free op) = do
                             next <- pp2 $ k
                             return $ unwords ["print", show v, "\n", next]
 
+-- | Writer Monad.
+pp3 :: Op a -> Int -> Writer String ()
+pp3 (Pure r) i = tell "return"
+pp3 (Free op) i = do
+  case op of (Def n k) -> do
+                          let v = Var i
+                          tell $ unwords [show v, "=", show n]
+                          tell "\n"
+                          pp3 (k v) (succ i)
+             (Add v1 v2 k) -> do
+                              let v = Var i
+                              tell $ unwords [show v, "=", show v1, "+", show v2]
+                              tell "\n"
+                              pp3 (k v) (succ i)
+             (Print v k) -> do
+                            tell $ unwords ["print", show v]
+                            tell "\n"
+                            pp3 k i
+
 -- | TODO: Monad transformers (State + Writer).
 {-
-pp3 :: Op a -> WriterT String (State Int) ()
-pp3 = do
+pp4 :: Op a -> WriterT String (State Int) ()
+pp4 = do
   return ()
 -}
 
@@ -119,12 +138,15 @@ runOp (Free (Print (Var n) k)) = putStrLn (show n) >> runOp k
 main :: IO ()
 main = do
 
-  let listing1 = pp1 0 test
-  putStr $ "listing1: {\n" ++ listing1 ++ "}\n\n"
+  let listing1 = pp1 test 0
+  putStr $ "pp1: {\n" ++ listing1 ++ "}\n\n"
 
-  let (listing2, _) = runState (pp2 test) 0
-  putStr $ "listing2: {\n" ++ listing2 ++ "}\n\n"
+  let listing2 = evalState (pp2 test) 0
+  putStr $ "pp2: {\n" ++ listing2 ++ "}\n\n"
 
-  putStr $ "output: {\n"
-  _ <- runOp test
+  let listing3 = execWriter (pp3 test 0)
+  putStr $ "pp3: {\n" ++ listing3 ++ "}\n\n"
+
+  putStr $ "run: {\n"
+  runOp test
   putStr $ "}\n\n"
