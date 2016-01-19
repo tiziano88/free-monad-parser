@@ -85,25 +85,25 @@ newVar = do
 -}
 
 -- | State Monad.
-pp :: Op a -> State Int String
-pp (Pure r) = return $ "return"
-pp (Free op) = do
+pp2 :: Op a -> State Int String
+pp2 (Pure r) = return $ "return"
+pp2 (Free op) = do
   case op of (Def n k) -> do
                           v <- newVar
-                          next <- pp $ k v
+                          next <- pp2 $ k v
                           return $ unwords [show v, "=", show n, "\n", next]
              (Add v1 v2 k) -> do
                               v <- newVar
-                              next <- pp $ k v
+                              next <- pp2 $ k v
                               return $ unwords [show v, "=", show v1, "+", show v2, "\n", next]
              (Print v k) -> do
-                            next <- pp $ k
+                            next <- pp2 $ k
                             return $ unwords ["print", show v, "\n", next]
 
 -- | TODO: Monad transformers (State + Writer).
 {-
-pp2 :: Op a -> WriterT String (State Int) ()
-pp2 = do
+pp3 :: Op a -> WriterT String (State Int) ()
+pp3 = do
   return ()
 -}
 
@@ -122,7 +122,7 @@ main = do
   let listing1 = pp1 0 test
   putStr $ "listing1: {\n" ++ listing1 ++ "}\n\n"
 
-  let (listing2, _) = runState (pp test) 0
+  let (listing2, _) = runState (pp2 test) 0
   putStr $ "listing2: {\n" ++ listing2 ++ "}\n\n"
 
   putStr $ "output: {\n"
