@@ -84,7 +84,7 @@ newVar = do
   return $ Var i
 -}
 
--- | State Monad.
+-- | State Monad only.
 pp2 :: Op a -> State Int String
 pp2 (Pure r) = return $ "return"
 pp2 (Free op) = do
@@ -100,7 +100,7 @@ pp2 (Free op) = do
                             next <- pp2 $ k
                             return $ unwords ["print", show v, "\n", next]
 
--- | Writer Monad.
+-- | Writer Monad only.
 pp3 :: Op a -> Int -> Writer String ()
 pp3 (Pure r) i = tell "return"
 pp3 (Free op) i = do
