@@ -89,26 +89,24 @@ pp1 :: Op a -> Int -> String
 pp1 (Pure r) i =
     "return"
 
-pp1 (Free (Def n k)) i =
-    (line [show v, assign, show n]) ++ (pp1 (k v) (succ i))
-  where
-    v = Var i
-
-pp1 (Free (Add v1 v2 k)) i =
-    (line [show v, assign, show v1, "+", show v2]) ++ (pp1 (k v) (succ i ))
-  where
-    v = Var i
-
-pp1 (Free (Print v k)) i =
-    (line ["print", show v]) ++ (pp1 k i)
-
-pp1 (Free (Eq v1 v2 k)) i =
-    (line [show v, assign, show v1, "==", show v2]) ++ (pp1 (k v) (succ i))
-  where
-    v = BoolV i
-
-pp1 (Free (End)) i =
-    "end"
+pp1 (Free op) i =
+    case op of
+        Def n k ->
+            (line [show v, assign, show n]) ++ (pp1 (k v) (succ i))
+          where
+            v = Var i
+        Add v1 v2 k ->
+            (line [show v, assign, show v1, "+", show v2]) ++ (pp1 (k v) (succ i ))
+          where
+            v = Var i
+        Print v k ->
+            (line ["print", show v]) ++ (pp1 k i)
+        Eq v1 v2 k ->
+            (line [show v, assign, show v1, "==", show v2]) ++ (pp1 (k v) (succ i))
+          where
+            v = BoolV i
+        End ->
+            "end"
 
 -- | Applicative style (needs to work for both StateT and State).
 newVar :: (Monad a, Functor a) => StateT Int a Var
@@ -135,18 +133,18 @@ pp2 (Pure r) =
 
 pp2 (Free op) = do
   case op of
-      (Def n k) -> do
+      Def n k -> do
           v <- newVar
           next <- pp2 $ k v
           return $ (line [show v, assign, show n]) ++ next
-      (Add v1 v2 k) -> do
+      Add v1 v2 k -> do
           v <- newVar
           next <- pp2 $ k v
           return $ (line [show v, assign, show v1, "+", show v2]) ++ next
-      (Print v k) -> do
+      Print v k -> do
           next <- pp2 $ k
           return $ (line ["print", show v]) ++ next
-      (Eq v1 v2 k) -> do
+      Eq v1 v2 k -> do
           v <- newBoolV
           next <- pp2 $ k v
           return $ (line [show v, assign, show v1, "==", show v2]) ++ next
@@ -160,18 +158,18 @@ pp3 (Pure r) i =
 
 pp3 (Free op) i =
   case op of
-      (Def n k) -> do
+      Def n k -> do
           let v = Var i
           tell $ line [show v, assign, show n]
           pp3 (k v) (succ i)
-      (Add v1 v2 k) -> do
+      Add v1 v2 k -> do
           let v = Var i
           tell $ line [show v, assign, show v1, "+", show v2]
           pp3 (k v) (succ i)
-      (Print v k) -> do
+      Print v k -> do
           tell $ line ["print", show v]
           pp3 k i
-      (Eq v1 v2 k) -> do
+      Eq v1 v2 k -> do
           let v = BoolV i
           tell $ line [show v, assign, show v1, "==", show v2]
 
@@ -188,18 +186,18 @@ pp4 (Pure r) =
 
 pp4 (Free op) =
   case op of
-      (Def n k) -> do
+      Def n k -> do
           v <- newVar
           tell $ line [show v, assign, show n]
           pp4 $ k v
-      (Add v1 v2 k) -> do
+      Add v1 v2 k -> do
           v <- newVar
           tell $ line [show v, assign, show v1, "+", show v2]
           pp4 $ k v
-      (Print v k) -> do
+      Print v k -> do
           tell $ line ["print", show v]
           pp4 $ k
-      (Eq v1 v2 k) -> do
+      Eq v1 v2 k -> do
            v <- newBoolV
            tell $ line [show v, assign, show v1, "==", show v2]
            pp4 $ k v
@@ -233,25 +231,23 @@ runOp :: Op a -> StateT RunState IO a
 runOp (Pure k) =
     return k
 
-runOp (Free (Def n k)) = do
-    v <- setVal n
-    runOp (k v)
-
-runOp (Free (Add v1 v2 k)) = do
-    n1 <- getVal v1
-    n2 <- getVal v2
-    v <- setVal (n1 + n2)
-    runOp (k v)
-
-runOp (Free (Print v k)) = do
-    val <- getVal v
-    (liftIO . putStrLn) (show val)
-    runOp k
-
-runOp (Free (Eq (Var n1) (Var n2) k)) = do
-    runOp (k $ BoolV 1)
-
---runOp (Free (End)) = return ()
+runOp (Free op) =
+    case op of
+        Def n k -> do
+            v <- setVal n
+            runOp (k v)
+        Add v1 v2 k -> do
+            n1 <- getVal v1
+            n2 <- getVal v2
+            v <- setVal (n1 + n2)
+            runOp (k v)
+        Print v k -> do
+            val <- getVal v
+            (liftIO . putStrLn) (show val)
+            runOp k
+        Eq (Var n1) (Var n2) k -> do
+            runOp (k $ BoolV 1)
+        -- End -> return ()
 
 
 main :: IO ()
