@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+
 import Control.Applicative
 import Control.Monad.Free
 import Control.Monad.State
@@ -65,12 +67,12 @@ test = do
 
 -- | Manual continuation.
 pp1 :: Op a -> Int -> String
-pp1 (Pure r) i = "return\n"
-pp1 (Free (Def n k)) i = unwords [show v, "=", show n, "\n", pp1 (k v) (succ i)]
+pp1 (Pure r) i = "return"
+pp1 (Free (Def n k)) i = (line [show v, "=", show n]) ++ (pp1 (k v) (succ i))
   where v = Var i
-pp1 (Free (Add v1 v2 k)) i = unwords [show v, "=", show v1, "+", show v2, "\n", pp1 (k v) (succ i )]
+pp1 (Free (Add v1 v2 k)) i = (line [show v, "=", show v1, "+", show v2]) ++ (pp1 (k v) (succ i ))
   where v = Var i
-pp1 (Free (Print v k)) i = unwords ["print", show v, "\n", pp1 k i]
+pp1 (Free (Print v k)) i = (line ["print", show v]) ++ (pp1 k i)
 pp1 (Free (End)) i = "end"
 
 -- | Applicative style (needs to work for both StateT and State).
@@ -91,51 +93,48 @@ pp2 (Free op) = do
   case op of (Def n k) -> do
                           v <- newVar
                           next <- pp2 $ k v
-                          return $ unwords [show v, "=", show n, "\n", next]
+                          return $ (line [show v, "=", show n]) ++ next
              (Add v1 v2 k) -> do
                               v <- newVar
                               next <- pp2 $ k v
-                              return $ unwords [show v, "=", show v1, "+", show v2, "\n", next]
+                              return $ (line [show v, "=", show v1, "+", show v2]) ++ next
              (Print v k) -> do
                             next <- pp2 $ k
-                            return $ unwords ["print", show v, "\n", next]
+                            return $ (line ["print", show v]) ++ next
 
 -- | Writer Monad only.
 pp3 :: Op a -> Int -> Writer String ()
 pp3 (Pure r) i = tell "return"
-pp3 (Free op) i = do
+pp3 (Free op) i =
   case op of (Def n k) -> do
                           let v = Var i
-                          tell $ unwords [show v, "=", show n]
-                          tell "\n"
+                          tell $ line [show v, "=", show n]
                           pp3 (k v) (succ i)
              (Add v1 v2 k) -> do
                               let v = Var i
-                              tell $ unwords [show v, "=", show v1, "+", show v2]
-                              tell "\n"
+                              tell $ line [show v, "=", show v1, "+", show v2]
                               pp3 (k v) (succ i)
              (Print v k) -> do
-                            tell $ unwords ["print", show v]
-                            tell "\n"
+                            tell $ line ["print", show v]
                             pp3 k i
+
+line :: [String] -> String
+line vs = (unwords vs) ++ "\n"
 
 -- | TODO: Monad transformers (State + Writer).
 pp4 :: Op a -> StateT Int (Writer String) ()
 pp4 (Pure r) = tell "return"
-pp4 (Free op) = do
+pp4 (Free op) =
   case op of (Def n k) -> do
                           v <- newVar
-                          tell $ unwords [show v, "=", show n]
-                          tell "\n"
+                          tell $ line [show v, "=", show n]
                           pp4 $ k v
              (Add v1 v2 k) -> do
                               v <- newVar
-                              tell $ unwords [show v, "=", show v1, "+", show v2]
-                              tell "\n"
+                              tell $ line [show v, "=", show v1, "+", show v2]
                               pp4 $ k v
              (Print v k) -> do
-                            tell $ unwords ["print", show v]
-                            tell "\n"
+                            tell $ line ["print", show v]
                             pp4 $ k
 
 runOp :: Op a -> IO a
