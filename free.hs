@@ -16,6 +16,8 @@ import Prelude hiding (print)
 -- etc.).
 newtype Var = Var Int
 
+newtype BoolVar = BoolVar Int
+
 -- | Define a function for displaying the symbolic name of a variable.
 instance Show Var where
   show (Var n) = "v" ++ show n
