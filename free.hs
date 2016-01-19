@@ -18,22 +18,22 @@ newtype Var = Var Int
 
 -- | Define a function for displaying the symbolic name of a variable.
 instance Show Var where
-  show (Var n) = "v" ++ show n
+    show (Var n) = "v" ++ show n
 
 newtype BoolV = BoolV Int
 instance Show BoolV where
-  show (BoolV n) = "b" ++ show n
+    show (BoolV n) = "b" ++ show n
 
 -- | This is the core definition of the syntax of our DSL, also encoding their return types. The
 -- last argument of each non-terminal instruction represents the next instruction in the monadic
 -- sequence. Note how instructions that introduce new variable in the scope accept a parameter of
 -- type `Var -> next`, while others simply accept a `next`.
 data OpF next
-  = Def Int (Var -> next)
-  | Add Var Var (Var -> next)
-  | Print Var next
-  | Eq Var Var (BoolV -> next)
-  | End
+    = Def Int (Var -> next)
+    | Add Var Var (Var -> next)
+    | Print Var next
+    | Eq Var Var (BoolV -> next)
+    | End
 
 -- | We create various convenience combinator lifting each of the syntax elements into the "free"
 -- monadic context. Note that this is nothing more than a mechanical transformation; no behaviour or
@@ -57,11 +57,11 @@ end = liftF $ End
 -- | We define the behaviour of OpF as a Functor. Note that it is possible for Haskell to derive
 -- this automatically using an extension.
 instance Functor OpF where
-  fmap f (Def n k) = Def n (f . k)
-  fmap f (Add v1 v2 k) = Add v1 v2 (f . k)
-  fmap f (Print v next) = Print v (f next)
-  fmap f (Eq v1 v2 k) = Eq v1 v2 (f . k)
-  fmap f End = End
+    fmap f (Def n k) = Def n (f . k)
+    fmap f (Add v1 v2 k) = Add v1 v2 (f . k)
+    fmap f (Print v next) = Print v (f next)
+    fmap f (Eq v1 v2 k) = Eq v1 v2 (f . k)
+    fmap f End = End
 
 -- | Shorthand notation.
 type Op = Free OpF
@@ -69,15 +69,15 @@ type Op = Free OpF
 -- | A sample program written in our new DSL.
 test :: Op ()
 test = do
-  a <- def 111
-  print a
-  b <- def 222
-  print b
-  c <- add a b
-  print c
-  d <- def 333
-  e <- eq c d
-  print d
+    a <- def 111
+    print a
+    b <- def 222
+    print b
+    c <- add a b
+    print c
+    d <- def 333
+    e <- eq c d
+    print d
 
 assign :: String
 assign =
@@ -115,9 +115,9 @@ newVar =
 
 {- Monadic style:
 newVar = do
-  i <- get
-  modify succ
-  return $ Var i
+    i <- get
+    modify succ
+    return $ Var i
 -}
 
 newBoolV :: (Monad a, Functor a) => StateT Int a BoolV
@@ -132,22 +132,22 @@ pp2 (Pure r) =
     return $ "return"
 
 pp2 (Free op) = do
-  case op of
-      Def n k -> do
-          v <- newVar
-          next <- pp2 $ k v
-          return $ (line [show v, assign, show n]) ++ next
-      Add v1 v2 k -> do
-          v <- newVar
-          next <- pp2 $ k v
-          return $ (line [show v, assign, show v1, "+", show v2]) ++ next
-      Print v k -> do
-          next <- pp2 $ k
-          return $ (line ["print", show v]) ++ next
-      Eq v1 v2 k -> do
-          v <- newBoolV
-          next <- pp2 $ k v
-          return $ (line [show v, assign, show v1, "==", show v2]) ++ next
+    case op of
+        Def n k -> do
+            v <- newVar
+            next <- pp2 $ k v
+            return $ (line [show v, assign, show n]) ++ next
+        Add v1 v2 k -> do
+            v <- newVar
+            next <- pp2 $ k v
+            return $ (line [show v, assign, show v1, "+", show v2]) ++ next
+        Print v k -> do
+            next <- pp2 $ k
+            return $ (line ["print", show v]) ++ next
+        Eq v1 v2 k -> do
+            v <- newBoolV
+            next <- pp2 $ k v
+            return $ (line [show v, assign, show v1, "==", show v2]) ++ next
 
 
 -- | Writer Monad only.
@@ -157,21 +157,21 @@ pp3 (Pure r) i =
     tell "return"
 
 pp3 (Free op) i =
-  case op of
-      Def n k -> do
-          let v = Var i
-          tell $ line [show v, assign, show n]
-          pp3 (k v) (succ i)
-      Add v1 v2 k -> do
-          let v = Var i
-          tell $ line [show v, assign, show v1, "+", show v2]
-          pp3 (k v) (succ i)
-      Print v k -> do
-          tell $ line ["print", show v]
-          pp3 k i
-      Eq v1 v2 k -> do
-          let v = BoolV i
-          tell $ line [show v, assign, show v1, "==", show v2]
+    case op of
+        Def n k -> do
+            let v = Var i
+            tell $ line [show v, assign, show n]
+            pp3 (k v) (succ i)
+        Add v1 v2 k -> do
+            let v = Var i
+            tell $ line [show v, assign, show v1, "+", show v2]
+            pp3 (k v) (succ i)
+        Print v k -> do
+            tell $ line ["print", show v]
+            pp3 k i
+        Eq v1 v2 k -> do
+            let v = BoolV i
+            tell $ line [show v, assign, show v1, "==", show v2]
 
 line :: [String] -> String
 line vs =
@@ -185,41 +185,41 @@ pp4 (Pure r) =
     tell "return"
 
 pp4 (Free op) =
-  case op of
-      Def n k -> do
-          v <- newVar
-          tell $ line [show v, assign, show n]
-          pp4 $ k v
-      Add v1 v2 k -> do
-          v <- newVar
-          tell $ line [show v, assign, show v1, "+", show v2]
-          pp4 $ k v
-      Print v k -> do
-          tell $ line ["print", show v]
-          pp4 $ k
-      Eq v1 v2 k -> do
-           v <- newBoolV
-           tell $ line [show v, assign, show v1, "==", show v2]
-           pp4 $ k v
+    case op of
+        Def n k -> do
+            v <- newVar
+            tell $ line [show v, assign, show n]
+            pp4 $ k v
+        Add v1 v2 k -> do
+            v <- newVar
+            tell $ line [show v, assign, show v1, "+", show v2]
+            pp4 $ k v
+        Print v k -> do
+            tell $ line ["print", show v]
+            pp4 $ k
+        Eq v1 v2 k -> do
+             v <- newBoolV
+             tell $ line [show v, assign, show v1, "==", show v2]
+             pp4 $ k v
 
 
 data RunState = RunState
-  { _intVar :: [Int]
-  , _boolVar :: [Bool]
-  }
+    { _intVar :: [Int]
+    , _boolVar :: [Bool]
+    }
 
 
 setVal :: Monad a => Int -> StateT RunState a Var
 setVal v = do
-           modify $ \state -> state { _intVar = (_intVar state) ++ [v] }
-           vv <- gets _intVar
-           return $ Var $ pred (length vv)
+    modify $ \state -> state { _intVar = (_intVar state) ++ [v] }
+    vv <- gets _intVar
+    return $ Var $ pred (length vv)
 
 
 getVal :: Monad a => Var -> StateT RunState a Int
 getVal (Var n) = do
-                 vv <- gets _intVar
-                 return $ vv !! n
+    vv <- gets _intVar
+    return $ vv !! n
 
 
 initialRunState :: RunState
