@@ -73,8 +73,8 @@ pp1 (Free (Add v1 v2 k)) i = unwords [show v, "=", show v1, "+", show v2, "\n", 
 pp1 (Free (Print v k)) i = unwords ["print", show v, "\n", pp1 k i]
 pp1 (Free (End)) i = "end"
 
--- | Applicative style.
-newVar :: State Int Var
+-- | Applicative style (needs to work for both StateT and State).
+newVar :: (Monad a, Functor a) => StateT Int a Var
 newVar = Var <$> get <* modify succ
 
 {- Monadic style:
@@ -120,11 +120,23 @@ pp3 (Free op) i = do
                             pp3 k i
 
 -- | TODO: Monad transformers (State + Writer).
-{-
-pp4 :: Op a -> WriterT String (State Int) ()
-pp4 = do
-  return ()
--}
+pp4 :: Op a -> StateT Int (Writer String) ()
+pp4 (Pure r) = tell "return"
+pp4 (Free op) = do
+  case op of (Def n k) -> do
+                          v <- newVar
+                          tell $ unwords [show v, "=", show n]
+                          tell "\n"
+                          pp4 $ k v
+             (Add v1 v2 k) -> do
+                              v <- newVar
+                              tell $ unwords [show v, "=", show v1, "+", show v2]
+                              tell "\n"
+                              pp4 $ k v
+             (Print v k) -> do
+                            tell $ unwords ["print", show v]
+                            tell "\n"
+                            pp4 $ k
 
 runOp :: Op a -> IO a
 runOp (Pure k) = return k
@@ -146,6 +158,9 @@ main = do
 
   let listing3 = execWriter (pp3 test 0)
   putStr $ "pp3: {\n" ++ listing3 ++ "}\n\n"
+
+  let listing4 = execWriter (evalStateT (pp4 test) 0)
+  putStr $ "pp4: {\n" ++ listing4 ++ "}\n\n"
 
   putStr $ "run: {\n"
   runOp test
